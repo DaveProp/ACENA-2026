@@ -90,7 +90,7 @@ function blk(k,cy,fn){const q=an(k);ctx.save();ctx.globalAlpha=q.a;ctx.translate
 function head(y0,hh){blk(0,y0+hh/2,()=>{ctx.letterSpacing=(5*s)+'px';T(val('f_org'),W/2,y0+hh*.2,Math.min(26*s,hh*.17),700,'#fff',W*.85);ctx.letterSpacing='0px';
  const ey=y0+hh*.27,eh=hh*.71;
  if($('emb').checked&&emb.naturalWidth){let ew=eh*emb.naturalWidth/emb.naturalHeight,h2=eh;if(ew>W*.7){ew=W*.7;h2=ew*emb.naturalHeight/emb.naturalWidth}
-  const p=1+.02*Math.sin(tt/500);ctx.save();ctx.translate(W/2,ey+eh/2);ctx.scale(p,p);if(!S.rec){ctx.shadowColor='rgba(0,0,0,.6)';ctx.shadowBlur=22*s}ctx.drawImage(emb,-ew/2,-h2/2,ew,h2);ctx.restore()}
+  const p=S.rec?1:1+.02*Math.sin(tt/500);ctx.save();ctx.translate(W/2,ey+eh/2);ctx.scale(p,p);if(!S.rec){ctx.shadowColor='rgba(0,0,0,.6)';ctx.shadowBlur=22*s}ctx.drawImage(emb,-ew/2,-h2/2,ew,h2);ctx.restore()}
  else T(val('f_title'),W/2,ey+eh*.78,eh*.8,900,GOLD,W*.85);
  if(S.logo){const lh=Math.min(hh*.5,120*s),lw=lh*S.logo.naturalWidth/S.logo.naturalHeight;ctx.drawImage(S.logo,34*s,y0+hh*.3,lw,lh)}})}
 function foot(by,bh){const th=val('f_theme').toUpperCase();let fs=Math.min(46*s,bh*.17)*S.ts;ctx.font=`900 italic ${fs}px system-ui`;let L=wrap(th,W*.88);
@@ -138,7 +138,7 @@ function scene(){const land=W>H,c=TH[S.th],tick=(land?30:40)*s,D=S.d;
  ctx.fillStyle=GOLD;ctx.fillRect(0,H-tick,W,tick);ctx.fillStyle='#6b0000';ctx.textAlign='left';ctx.font=`900 ${tick*.58}px system-ui`;
  const u=val('f_tag')+'   ✦   ',uw=Math.max(10,ctx.measureText(u).width),off=(tt*.09*s)%uw;for(let k=-1;k*uw<W+uw;k++)ctx.fillText(u,k*uw-off,H-tick*.28);ctx.textAlign='center'}
 function draw(t){const fm=FM[S.fmt],q=S.rec?(S.rs||1):1;const al=q<1?16:2;W=Math.max(al,Math.round(fm[0]*q/al)*al);H=Math.max(al,Math.round(fm[1]*q/al)*al);if(cv.width!==W||cv.height!==H){cv.width=W;cv.height=H;$('sz').textContent=fm[0]+' × '+fm[1]+' px'}ctx.imageSmoothingQuality='high';s=Math.min(W,H)/1080;tt=STATIC?4000:t-S.t0;ctx.filter='none';scene()}
-requestAnimationFrame(function L(t){draw(t);requestAnimationFrame(L)});
+requestAnimationFrame(function L(t){if(!S.rec)draw(t);else if(!S.vfc&&t-(S.lt||0)>=33){S.lt=t;draw(t);S.manual&&S.vt&&S.vt.requestFrame()}requestAnimationFrame(L)});
 const st=m=>$('st').textContent=m;
 const MD={veillee:{d:'cadre',th:'rouge',fx:['spark','shine'],emb:1,t:{org:'ÉGLISE ALLIANCE ROYALE',theme:'YAMOUSSOUKRO, TES PROMESSES S’ACCOMPLIRONT',date:'VEN. 11 DÉC · VEILLÉE',place:'Mairie de Yakro',contact:'+225 01 60 74 13 77 · +225 07 87 80 11 24',tag:'#31 JOURS DE JEÛNE & PRIÈRE · DU 11 NOV AU 11 DÉC'}},};
 const mark=(id,attr,v)=>[...$(id).children].forEach(b=>b.classList.toggle('on',b.dataset[attr]===v));
@@ -171,7 +171,7 @@ function showVid(b,name){const vp=$('vp'),u=URL.createObjectURL(b);vp.hidden=fal
 $('png').onclick=()=>{STATIC=true;draw(0);cv.toBlob(b=>{STATIC=false;save('pub-acena-'+S.fmt.replace(':','x')+'.png',b)},'image/png')};
 let blob=null,ext='webm';$('sv').onclick=()=>blob&&save('pub-acena-'+S.fmt.replace(':','x')+'.'+ext,blob);
 $('rec').onclick=async()=>{if(S.rec)return;if(!window.MediaRecorder||!cv.captureStream){st('Création vidéo non supportée par ce navigateur.');return}
- S.rec=true;$('sv').hidden=true;$('vp').hidden=true;$('rec').disabled=true;$('png').disabled=true;$('pgw').classList.add('on');$('pg').style.width='0';draw(performance.now());const v=S.kind==='video'?S.items[0]:null,stream=cv.captureStream(30);let wm;
+ S.rec=true;$('sv').hidden=true;$('vp').hidden=true;$('rec').disabled=true;$('png').disabled=true;$('pgw').classList.add('on');$('pg').style.width='0';draw(performance.now());const v=S.kind==='video'?S.items[0]:null,stream=cv.captureStream(MAN?0:30);let wm;S.vt=stream.getVideoTracks()[0];S.manual=MAN;S.vfc=false;
  if(v){wm=v.muted;v.loop=false;v.currentTime=0;v.muted=false;v.volume=1;let ok=false;
   try{const AC=window.AudioContext||window.webkitAudioContext;if(AC){S.ac=S.ac||new AC();
    if(S.ac.state!=='running'){try{await S.ac.resume()}catch(e){}}
@@ -183,7 +183,7 @@ $('rec').onclick=async()=>{if(S.rec)return;if(!window.MediaRecorder||!cv.capture
  const ch=[],mr=new MediaRecorder(stream,mt?{mimeType:mt,videoBitsPerSecond:(S.rs||1)<1?3.5e6:6e6}:{});mr.ondataavailable=e=>e.data.size&&ch.push(e.data);
  const dur=v&&isFinite(v.duration)?Math.min(v.duration,90):(S.items.length>1?Math.min(S.items.length*3.5,60):9);
  mr.onstop=()=>{blob=new Blob(ch,{type:(mt||'video/webm').split(';')[0]});S.rec=false;$('rec').disabled=false;$('png').disabled=false;$('pgw').classList.remove('on');if(v){v.muted=wm;v.loop=true;v.play()}showVid(blob,'pub-acena-'+S.fmt.replace(':','x')+'.'+ext);$('sv').hidden=false;st('Vidéo prête ✔ — cliquez sur « Enregistrer la vidéo ».')};
- S.t0=performance.now();mr.start(500);const t0=performance.now();
+ S.t0=performance.now();if(v&&v.requestVideoFrameCallback){S.vfc=true;const cb=()=>{if(!S.rec){S.vfc=false;return}draw(performance.now());S.manual&&S.vt&&S.vt.requestFrame();v.requestVideoFrameCallback(cb)};v.requestVideoFrameCallback(cb)}mr.start(500);const t0=performance.now();
  const tk=setInterval(()=>{const p=(performance.now()-t0)/1000;if(v&&v.paused&&!v.ended)v.play().catch(()=>{});st('Enregistrement… '+Math.round(p)+' / '+Math.round(dur)+' s');$('pg').style.width=Math.min(100,p/dur*100)+'%';if(p>=dur){clearInterval(tk);mr.stop()}},250)};
 
 const KEYS=['f_title','f_org','f_theme','f_date','f_place','f_contact','f_tag'];
@@ -191,6 +191,7 @@ try{const sv=JSON.parse(localStorage.getItem('acena')||'null');if(sv){KEYS.forEa
 const persist=()=>{try{const o={emb:$('emb').checked};KEYS.forEach(k=>o[k]=$(k).value);localStorage.setItem('acena',JSON.stringify(o))}catch(e){}};
 KEYS.forEach(k=>$(k).addEventListener('input',persist));$('emb').addEventListener('change',persist);$('mods').addEventListener('click',()=>setTimeout(persist,0));
 $('rst').onclick=()=>{try{localStorage.removeItem('acena')}catch(e){}document.querySelector('[data-m="veillee"]').click();$('f_title').value='GRANDE VEILLÉE';S.zoom=1;$('zoom').value=1;S.ox=S.oy=0;st('Réinitialisé.')};
+const MAN=!!(window.CanvasCaptureMediaStreamTrack&&CanvasCaptureMediaStreamTrack.prototype.requestFrame);
 S.rs=matchMedia('(pointer:coarse)').matches?.67:1;$('vq').value=String(S.rs);$('vq').onchange=e=>S.rs=+e.target.value;
 if('serviceWorker' in navigator&&/^https?:/.test(location.protocol)){addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}))}
 </script></body></html>
