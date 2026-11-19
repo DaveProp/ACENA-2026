@@ -50,7 +50,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
 <main>
 <div class="stage"><canvas id="cv" width="1080" height="1350"></canvas>
 <div class="meta"><span id="sz">1080 × 1350 px</span><span>Glissez pour recadrer</span></div>
-<div class="pgw" id="pgw"><i id="pg"></i></div><div class="status" id="st" role="status" aria-live="polite">Prêt.</div></div>
+<div class="pgw" id="pgw"><i id="pg"></i></div><div id="vp" hidden style="margin-top:10px;text-align:left"></div><div class="status" id="st" role="status" aria-live="polite">Prêt.</div></div>
 <div class="panel"><section class="card"><h3><span>1</span>Votre média</h3><div class="row"><label class="btn" style="cursor:pointer">📁 Vidéo ou photo(s)<input id="file" type="file" multiple accept="video/*,image/*" hidden></label><label class="btn" style="cursor:pointer">🏷️ Mon logo<input id="logo" type="file" accept="image/*" hidden></label><button id="clr">Retirer</button></div>
 <label>Zoom<input id="zoom" type="range" min="1" max="3" step="0.02" value="1"></label></section><section class="card"><h3><span>2</span>Modèle prêt à l’emploi</h3><div class="row" id="mods"><button data-m="veillee">Veillée</button></div></section><section class="card"><h3><span>3</span>Style</h3><div class="hint">Design du contour</div><div class="row" id="dsg"><button data-d="cadre" class="on">Cadre</button><button data-d="bandeau">Bandeau</button><button data-d="cine">Cinéma</button><button data-d="affiche">Affiche</button><button data-d="diag">Diagonale</button></div>
 <div class="hint">Format</div><div class="row" id="fmts"><button data-f="9:16">9:16 Story</button><button data-f="4:5" class="on">4:5 Feed</button><button data-f="1:1">1:1</button><button data-f="16:9">16:9</button></div>
@@ -157,17 +157,30 @@ let dr=null;cv.onpointerdown=e=>{dr=[e.clientX,e.clientY,S.ox,S.oy];cv.setPointe
 cv.onpointermove=e=>{if(!dr)return;const r=cv.getBoundingClientRect();S.ox=dr[2]+(e.clientX-dr[0])/r.width;S.oy=dr[3]+(e.clientY-dr[1])/r.height};cv.onpointerup=()=>dr=null;
 async function save(name,data){let d=null;try{d=await claude.use('downloads')}catch(e){}
  if(d){try{await d.save({filename:name,data});st('Fichier enregistré ✔');return}catch(e){if(e&&e.code==='declined'){st('Enregistrement annulé.');return}}}
- try{const u=URL.createObjectURL(data),a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000);st('Téléchargement lancé ✔ ('+name+')')}
+ try{const f=new File([data],name,{type:(data.type||'').split(';')[0]});
+  if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:name});st('Envoyé ✔ — choisissez « Enregistrer » dans le menu.');return}}
+ catch(e){if(e&&e.name==='AbortError'){st('Annulé.');return}}
+ try{const u=URL.createObjectURL(data),a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),60000);st('Téléchargement lancé ✔ ('+name+'). Sinon, utilisez le lecteur ci-dessous.')}
  catch(e){st('Échec du téléchargement : '+(e&&e.message||e))}}
+function showVid(b,name){const vp=$('vp'),u=URL.createObjectURL(b);vp.hidden=false;vp.textContent='';
+ const v=document.createElement('video');v.src=u;v.controls=true;v.playsInline=true;v.muted=false;v.style.cssText='width:100%;max-height:50vh;border-radius:10px;background:#000';
+ const a=document.createElement('a');a.href=u;a.download=name;a.textContent='⬇ Télécharger la vidéo';a.className='btn';a.style.cssText='display:inline-block;margin-top:8px;text-decoration:none';
+ const t=document.createElement('div');t.className='hint';t.textContent='Sur téléphone : appuyez longuement sur la vidéo ou utilisez « Enregistrer la vidéo » pour l’envoyer vers la galerie.';
+ vp.append(v,a,t)}
 $('png').onclick=()=>{STATIC=true;draw(0);cv.toBlob(b=>{STATIC=false;save('pub-acena-'+S.fmt.replace(':','x')+'.png',b)},'image/png')};
 let blob=null,ext='webm';$('sv').onclick=()=>blob&&save('pub-acena-'+S.fmt.replace(':','x')+'.'+ext,blob);
 $('rec').onclick=()=>{if(S.rec)return;if(!window.MediaRecorder||!cv.captureStream){st('Création vidéo non supportée par ce navigateur.');return}
- S.rec=true;$('sv').hidden=true;$('rec').disabled=true;$('png').disabled=true;$('pgw').classList.add('on');$('pg').style.width='0';const v=S.kind==='video'?S.items[0]:null,stream=cv.captureStream(30);let wm;
- if(v){wm=v.muted;v.loop=false;v.currentTime=0;v.muted=false;v.play().catch(()=>{});try{(v.captureStream?v.captureStream():null)?.getAudioTracks().forEach(t=>stream.addTrack(t))}catch(e){}}
- const mt=['video/mp4','video/webm;codecs=vp9','video/webm'].find(t=>MediaRecorder.isTypeSupported(t))||'';ext=mt.startsWith('video/mp4')?'mp4':'webm';
+ S.rec=true;$('sv').hidden=true;$('vp').hidden=true;$('rec').disabled=true;$('png').disabled=true;$('pgw').classList.add('on');$('pg').style.width='0';const v=S.kind==='video'?S.items[0]:null,stream=cv.captureStream(30);let wm;
+ if(v){wm=v.muted;v.loop=false;v.currentTime=0;v.muted=false;v.volume=1;let ok=false;
+  try{const AC=window.AudioContext||window.webkitAudioContext;if(AC){S.ac=S.ac||new AC();S.ac.resume&&S.ac.resume();
+   if(!v._dst){v._src=S.ac.createMediaElementSource(v);v._dst=S.ac.createMediaStreamDestination();v._src.connect(v._dst)}
+   const tr=v._dst.stream.getAudioTracks();tr.forEach(t=>stream.addTrack(t));ok=tr.length>0}}catch(e){}
+  if(!ok){try{(v.captureStream?v.captureStream():null)?.getAudioTracks().forEach(t=>{stream.addTrack(t);ok=true})}catch(e){}}
+  v.play().catch(()=>{});if(!ok)st('Attention : le son de la vidéo n’a pas pu être capturé sur cet appareil.')}
+ const mt=['video/mp4;codecs=avc1,mp4a.40.2','video/mp4','video/webm;codecs=vp9,opus','video/webm;codecs=vp9','video/webm'].find(t=>MediaRecorder.isTypeSupported(t))||'';ext=mt.startsWith('video/mp4')?'mp4':'webm';
  const ch=[],mr=new MediaRecorder(stream,mt?{mimeType:mt,videoBitsPerSecond:6e6}:{});mr.ondataavailable=e=>e.data.size&&ch.push(e.data);
  const dur=v&&isFinite(v.duration)?Math.min(v.duration,90):(S.items.length>1?Math.min(S.items.length*3.5,60):9);
- mr.onstop=()=>{blob=new Blob(ch,{type:mt||'video/webm'});S.rec=false;$('rec').disabled=false;$('png').disabled=false;$('pgw').classList.remove('on');if(v){v.muted=wm;v.loop=true;v.play()}$('sv').hidden=false;st('Vidéo prête ✔ — cliquez sur « Enregistrer la vidéo ».')};
+ mr.onstop=()=>{blob=new Blob(ch,{type:mt||'video/webm'});S.rec=false;$('rec').disabled=false;$('png').disabled=false;$('pgw').classList.remove('on');if(v){v.muted=wm;v.loop=true;v.play()}showVid(blob,'pub-acena-'+S.fmt.replace(':','x')+'.'+ext);$('sv').hidden=false;st('Vidéo prête ✔ — cliquez sur « Enregistrer la vidéo ».')};
  S.t0=performance.now();mr.start(500);const t0=performance.now();
  const tk=setInterval(()=>{const p=(performance.now()-t0)/1000;st('Enregistrement… '+Math.round(p)+' / '+Math.round(dur)+' s');$('pg').style.width=Math.min(100,p/dur*100)+'%';if(p>=dur){clearInterval(tk);mr.stop()}},250)};
 
