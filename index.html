@@ -137,7 +137,7 @@ function scene(){const land=W>H,c=TH[S.th],tick=(land?30:40)*s,D=S.d;
  // bandeau défilant
  ctx.fillStyle=GOLD;ctx.fillRect(0,H-tick,W,tick);ctx.fillStyle='#6b0000';ctx.textAlign='left';ctx.font=`900 ${tick*.58}px system-ui`;
  const u=val('f_tag')+'   ✦   ',uw=Math.max(10,ctx.measureText(u).width),off=(tt*.09*s)%uw;for(let k=-1;k*uw<W+uw;k++)ctx.fillText(u,k*uw-off,H-tick*.28);ctx.textAlign='center'}
-function draw(t){const fm=FM[S.fmt],q=S.rec?(S.rs||1):1;W=Math.round(fm[0]*q/2)*2;H=Math.round(fm[1]*q/2)*2;if(cv.width!==W||cv.height!==H){cv.width=W;cv.height=H;$('sz').textContent=fm[0]+' × '+fm[1]+' px'}ctx.imageSmoothingQuality='high';s=Math.min(W,H)/1080;tt=STATIC?4000:t-S.t0;ctx.filter='none';scene()}
+function draw(t){const fm=FM[S.fmt],q=S.rec?(S.rs||1):1;const al=q<1?16:2;W=Math.max(al,Math.round(fm[0]*q/al)*al);H=Math.max(al,Math.round(fm[1]*q/al)*al);if(cv.width!==W||cv.height!==H){cv.width=W;cv.height=H;$('sz').textContent=fm[0]+' × '+fm[1]+' px'}ctx.imageSmoothingQuality='high';s=Math.min(W,H)/1080;tt=STATIC?4000:t-S.t0;ctx.filter='none';scene()}
 requestAnimationFrame(function L(t){draw(t);requestAnimationFrame(L)});
 const st=m=>$('st').textContent=m;
 const MD={veillee:{d:'cadre',th:'rouge',fx:['spark','shine'],emb:1,t:{org:'ÉGLISE ALLIANCE ROYALE',theme:'YAMOUSSOUKRO, TES PROMESSES S’ACCOMPLIRONT',date:'VEN. 11 DÉC · VEILLÉE',place:'Mairie de Yakro',contact:'+225 01 60 74 13 77 · +225 07 87 80 11 24',tag:'#31 JOURS DE JEÛNE & PRIÈRE · DU 11 NOV AU 11 DÉC'}},};
@@ -150,7 +150,7 @@ $('ths').onclick=e=>{const t=e.target.dataset.t;if(!t)return;S.th=t;mark('ths','
 document.querySelectorAll('.fx').forEach(c=>c.onchange=()=>c.checked?S.fx.add(c.value):S.fx.delete(c.value));
 $('flt').onchange=e=>S.fl=+e.target.value;$('tr').onchange=e=>S.tr=e.target.value;$('mt').onchange=e=>S.mt=e.target.value;$('ts').oninput=e=>S.ts=+e.target.value;$('zoom').oninput=e=>S.zoom=+e.target.value;
 $('file').onchange=async e=>{const fs=[...e.target.files];if(!fs.length)return;S.ox=S.oy=0;const vf=fs.find(f=>f.type.startsWith('video'));
- if(vf){const v=document.createElement('video');v.src=URL.createObjectURL(vf);v.muted=true;v.loop=true;v.playsInline=true;v.onloadeddata=()=>{S.items=[v];S.kind='video';v.play()}}
+ if(vf){const v=document.createElement('video');v.src=URL.createObjectURL(vf);v.muted=true;v.loop=true;v.playsInline=true;v.onerror=()=>st('Cette vidéo ne peut pas être lue par ce navigateur. Essayez un fichier MP4.');v.onloadeddata=()=>{S.items=[v];S.kind='video';v.play()}}
  else{S.items=await Promise.all(fs.filter(f=>f.type.startsWith('image')).map(f=>new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.src=URL.createObjectURL(f)})));S.kind='img';S.t0=performance.now()}};
 $('logo').onchange=e=>{const f=e.target.files[0];if(!f)return;const i=new Image();i.onload=()=>S.logo=i;i.src=URL.createObjectURL(f)};
 $('clr').onclick=()=>{S.items=[];S.kind=null;S.logo=null};
@@ -164,7 +164,7 @@ async function save(name,data){let d=null;try{d=await claude.use('downloads')}ca
  try{const u=URL.createObjectURL(data),a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),60000);st('Téléchargement lancé ✔ ('+name+'). Sinon, utilisez le lecteur ci-dessous.')}
  catch(e){st('Échec du téléchargement : '+(e&&e.message||e))}}
 function showVid(b,name){const vp=$('vp'),u=URL.createObjectURL(b);vp.hidden=false;vp.textContent='';
- const v=document.createElement('video');v.src=u;v.controls=true;v.playsInline=true;v.muted=false;v.style.cssText='width:100%;max-height:50vh;border-radius:10px;background:#000';
+ const v=document.createElement('video');v.src=u;v.controls=true;v.playsInline=true;v.muted=false;v.style.cssText='width:100%;max-height:50vh;border-radius:10px;background:#000';v.onerror=()=>st('Cette vidéo ne se lit pas ici. Utilisez « Télécharger la vidéo » puis ouvrez-la dans votre galerie, ou passez la qualité sur HD.');
  const a=document.createElement('a');a.href=u;a.download=name;a.textContent='⬇ Télécharger la vidéo';a.className='btn';a.style.cssText='display:inline-block;margin-top:8px;text-decoration:none';
  const t=document.createElement('div');t.className='hint';t.textContent='Sur téléphone : appuyez longuement sur la vidéo ou utilisez « Enregistrer la vidéo » pour l’envoyer vers la galerie.';
  vp.append(v,a,t)}
@@ -178,10 +178,10 @@ $('rec').onclick=()=>{if(S.rec)return;if(!window.MediaRecorder||!cv.captureStrea
    const tr=v._dst.stream.getAudioTracks();tr.forEach(t=>stream.addTrack(t));ok=tr.length>0}}catch(e){}
   if(!ok){try{(v.captureStream?v.captureStream():null)?.getAudioTracks().forEach(t=>{stream.addTrack(t);ok=true})}catch(e){}}
   v.play().catch(()=>{});if(!ok)st('Attention : le son de la vidéo n’a pas pu être capturé sur cet appareil.')}
- const mt=['video/mp4;codecs=avc1,mp4a.40.2','video/mp4','video/webm;codecs=vp9,opus','video/webm;codecs=vp9','video/webm'].find(t=>MediaRecorder.isTypeSupported(t))||'';ext=mt.startsWith('video/mp4')?'mp4':'webm';
+ const mt=['video/mp4','video/webm;codecs=vp9,opus','video/webm;codecs=vp9','video/webm'].find(t=>MediaRecorder.isTypeSupported(t))||'';ext=mt.startsWith('video/mp4')?'mp4':'webm';
  const ch=[],mr=new MediaRecorder(stream,mt?{mimeType:mt,videoBitsPerSecond:(S.rs||1)<1?3.5e6:6e6}:{});mr.ondataavailable=e=>e.data.size&&ch.push(e.data);
  const dur=v&&isFinite(v.duration)?Math.min(v.duration,90):(S.items.length>1?Math.min(S.items.length*3.5,60):9);
- mr.onstop=()=>{blob=new Blob(ch,{type:mt||'video/webm'});S.rec=false;$('rec').disabled=false;$('png').disabled=false;$('pgw').classList.remove('on');if(v){v.muted=wm;v.loop=true;v.play()}showVid(blob,'pub-acena-'+S.fmt.replace(':','x')+'.'+ext);$('sv').hidden=false;st('Vidéo prête ✔ — cliquez sur « Enregistrer la vidéo ».')};
+ mr.onstop=()=>{blob=new Blob(ch,{type:(mt||'video/webm').split(';')[0]});S.rec=false;$('rec').disabled=false;$('png').disabled=false;$('pgw').classList.remove('on');if(v){v.muted=wm;v.loop=true;v.play()}showVid(blob,'pub-acena-'+S.fmt.replace(':','x')+'.'+ext);$('sv').hidden=false;st('Vidéo prête ✔ — cliquez sur « Enregistrer la vidéo ».')};
  S.t0=performance.now();mr.start(500);const t0=performance.now();
  const tk=setInterval(()=>{const p=(performance.now()-t0)/1000;st('Enregistrement… '+Math.round(p)+' / '+Math.round(dur)+' s');$('pg').style.width=Math.min(100,p/dur*100)+'%';if(p>=dur){clearInterval(tk);mr.stop()}},250)};
 
